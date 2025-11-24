@@ -1,0 +1,151 @@
+# AI助手核心规则
+
+## 三阶段工作流
+
+### 阶段一：分析问题
+
+**声明格式**：`【分析问题】`
+
+**目的**
+因为可能存在多个可选方案，要做出正确的决策，需要足够的依据。
+
+**必须做的事**：
+- 理解我的意图，如果有歧义请问我
+- 搜索所有相关代码
+- 识别问题根因
+
+**主动发现问题**
+- 发现重复代码
+- 识别不合理的命名
+- 发现多余的代码、类
+- 发现可能过时的设计
+- 发现过于复杂的设计、调用
+- 发现不一致的类型定义
+- 进一步搜索代码，看是否更大范围内有类似问题
+
+做完以上事项，就可以向我提问了。
+
+**绝对禁止**：
+- ❌ 修改任何代码
+- ❌ 急于给出解决方案
+- ❌ 跳过搜索和理解步骤
+- ❌ 不分析就推荐方案
+
+**阶段转换规则**
+本阶段你要向我提问。
+如果存在多个你无法抉择的方案，要问我，作为提问的一部分。
+如果没有需要问我的，则直接进入下一阶段。
+
+### 阶段二：制定方案
+**声明格式**：`【制定方案】`
+
+**前置条件**：
+- 我明确回答了关键技术决策。
+
+**必须做的事**：
+- 列出变更（新增、修改、删除）的文件，简要描述每个文件的变化
+- 消除重复逻辑：如果发现重复代码，必须通过复用或抽象来消除
+- 确保修改后的代码符合DRY原则和良好的架构设计
+
+如果新发现了向我收集的关键决策，在这个阶段你还可以继续问我，直到没有不明确的问题之后，本阶段结束。
+本阶段不允许自动切换到下一阶段。
+
+### 阶段三：执行方案
+**声明格式**：`【执行方案】`
+
+**必须做的事**：
+- 严格按照选定方案实现
+- 修改后运行类型检查
+
+**绝对禁止**：
+- ❌ 提交代码（除非用户明确要求）
+- 启动开发服务器
+
+如果在这个阶段发现了拿不准的问题，请向我提问。
+
+收到用户消息时，一般从【分析问题】阶段开始，除非用户明确指定阶段的名字。
+
+# Project Overview
+本專案為多人連線五子棋，採用 Vue3 + NestJS + WebSocket。
+前端負責顯示 UI 與傳送事件，後端處理遊戲邏輯、房間管理、配對機制。
+
+# Folder Structure
+frontend/
+  src/
+    components/
+    views/
+    stores/
+    websocket/
+    types/
+
+backend/
+  src/
+    modules/
+      gateway/         # WebSocket gateway
+      matchmaking/     # 配對邏輯
+      room/            # 房間管理
+      game/            # 五子棋規則
+    common/
+    types/
+
+# Naming Rules
+- TypeScript：使用 PascalCase 作為 interface/class 名稱
+- Vue 組件：使用 PascalCase
+- 事件名稱：使用 lower-case + dot，例如 "game.move"
+
+# State Definition
+Room = {
+  id: string
+  players: Player[]
+  board: number[][]  # 15x15
+  currentTurn: 'black' | 'white'
+  status: 'waiting' | 'playing' | 'ended'
+  winner?: string
+}
+
+Player = {
+  id: string
+  name: string
+  socketId: string
+}
+
+Move = {
+  x: number
+  y: number
+  playerId: string
+}
+
+# Game Rules
+- 棋盤固定 15x15
+- 黑棋先手
+- 同一格不能重複落子
+- 一方連五即勝
+- 禁手可選，未在無禁手模式預設不啟用
+- 雙方可投降
+
+# WebSocket Event Protocol
+Client → Server:
+  matchmaking.join
+  matchmaking.cancel
+  game.move
+  game.surrender
+  room.join
+  room.leave
+
+Server → Client:
+  matchmaking.matched
+  room.state
+  game.update
+  game.result
+
+# Forbidden
+- 不得在前端判斷勝負
+- 不得在前端保存完整遊戲狀態（後端為權威）
+- 不得新增未在現有資料結構中的欄位（除非先更新 Rules）
+- 不得在單次 commit 中混合 UI 與遊戲邏輯修改
+
+# Style
+- 全專案使用 TypeScript
+- 前後端共用 types（/common/types）
+- 使用 async/await，禁止 callback 風格
+- WebSocket event handler 必須做錯誤處理
