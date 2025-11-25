@@ -1,7 +1,10 @@
 import { io, Socket } from 'socket.io-client';
 import type { ServerToClientEvents, ClientToServerEvents } from '@gomoku/common';
 
-export const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io('http://localhost:3001', {
+// 使用环境变量或当前主机地址，支持局域网访问
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || `http://${window.location.hostname}:3001`;
+
+export const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(SOCKET_URL, {
   autoConnect: false,
   reconnection: true,
   reconnectionDelay: 1000,

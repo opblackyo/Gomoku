@@ -15,7 +15,7 @@ import { GameService } from '../game/game.service';
 
 @WebSocketGateway({
   cors: {
-    origin: 'http://localhost:3000',
+    origin: true, // 允许所有来源（开发环境）
     credentials: true,
   },
 })
