@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <header>
+    <header v-if="!gameStore.roomId">
       <h1>五子棋 Gomoku</h1>
     </header>
     <main>
@@ -30,9 +30,11 @@ onUnmounted(() => {
 
 <style scoped>
 #app {
-  min-height: 100vh;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 header {
@@ -40,6 +42,7 @@ header {
   color: white;
   padding: 1rem;
   text-align: center;
+  flex-shrink: 0;
 }
 
 main {
@@ -47,7 +50,14 @@ main {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 2rem;
+  overflow: hidden;
+}
+
+/* 桌面版樣式 */
+@media (min-width: 768px) {
+  main {
+    padding: 2rem;
+  }
 }
 </style>
 

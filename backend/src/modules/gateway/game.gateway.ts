@@ -116,6 +116,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         this.server.to(room.id).emit('game.result', result);
         updatedRoom.status = 'ended';
         updatedRoom.winner = result.winner;
+        updatedRoom.rematchRequests = []; // 清空重賽請求
         this.roomService.updateRoom(updatedRoom);
       }
     } catch (error) {
@@ -137,7 +138,60 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       room.status = 'ended';
       room.winner = result.winner;
+      room.rematchRequests = []; // 清空重賽請求
       this.roomService.updateRoom(room);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      client.emit('error', { message });
+    }
+  }
+
+  @SubscribeMessage('game.restart')
+  handleGameRestart(@ConnectedSocket() client: Socket) {
+    try {
+      const room = this.roomService.getRoomBySocketId(client.id);
+      if (!room) {
+        throw new Error('Room not found');
+      }
+
+      if (room.status !== 'ended') {
+        throw new Error('Game is not ended');
+      }
+
+      const player = room.players.find(p => p.socketId === client.id);
+      if (!player) {
+        throw new Error('Player not found');
+      }
+
+      // 初始化 rematchRequests 如果不存在
+      if (!room.rematchRequests) {
+        room.rematchRequests = [];
+      }
+
+      // 如果玩家已經請求過，忽略
+      if (room.rematchRequests.includes(player.id)) {
+        return;
+      }
+
+      // 添加玩家到請求列表
+      room.rematchRequests.push(player.id);
+
+      // 檢查是否雙方都同意
+      if (room.rematchRequests.length === 2) {
+        // 重置遊戲狀態
+        room.board = Array(15).fill(null).map(() => Array(15).fill(0));
+        room.currentTurn = 'black';
+        room.status = 'playing';
+        room.winner = null;
+        room.rematchRequests = [];
+
+        this.roomService.updateRoom(room);
+        this.server.to(room.id).emit('room.update', room);
+      } else {
+        // 只有一方同意，更新房間狀態讓前端顯示等待訊息
+        this.roomService.updateRoom(room);
+        this.server.to(room.id).emit('room.update', room);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       client.emit('error', { message });

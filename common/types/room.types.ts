@@ -14,5 +14,6 @@ export interface Room {
   currentTurn: PlayerColor;
   status: RoomStatus;
   winner?: string;
+  rematchRequests?: string[]; // 請求再來一局的玩家 ID 列表
 }
 

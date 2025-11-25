@@ -11,6 +11,7 @@ export interface ClientToServerEvents {
   'matchmaking.cancel': () => void;
   'game.move': (data: Move) => void;
   'game.surrender': () => void;
+  'game.restart': () => void;
   'room.join': (data: { roomId: string }) => void;
   'room.leave': () => void;
 }
@@ -19,6 +20,7 @@ export interface ClientToServerEvents {
 export interface ServerToClientEvents {
   'matchmaking.matched': (data: { roomId: string }) => void;
   'room.state': (data: Room) => void;
+  'room.update': (data: Room) => void;
   'game.update': (data: { move: Move; board: Room['board']; currentTurn: Room['currentTurn'] }) => void;
   'game.result': (data: GameResult) => void;
   'error': (data: { message: string }) => void;
