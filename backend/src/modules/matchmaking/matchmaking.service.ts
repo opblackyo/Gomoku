@@ -1,10 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import type { Player } from '@gomoku/common';
+import { StatsService } from '../stats/stats.service';
 
 @Injectable()
 export class MatchmakingService {
   private queue: Player[] = [];
+
+  constructor(private statsService: StatsService) {}
 
   async addToQueue(socketId: string, playerName: string): Promise<{ player1: Player; player2: Player } | null> {
     const player: Player = {
@@ -13,7 +16,10 @@ export class MatchmakingService {
       socketId,
     };
 
-    this.queue.push(player);
+    // 初始化玩家統計數據
+    const playerWithStats = this.statsService.initializePlayerStats(player);
+
+    this.queue.push(playerWithStats);
 
     // 如果隊列中有兩個或以上玩家，進行配對
     if (this.queue.length >= 2) {

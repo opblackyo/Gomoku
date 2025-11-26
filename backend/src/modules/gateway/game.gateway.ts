@@ -12,6 +12,7 @@ import type { ServerToClientEvents, ClientToServerEvents, Move } from '@gomoku/c
 import { MatchmakingService } from '../matchmaking/matchmaking.service';
 import { RoomService } from '../room/room.service';
 import { GameService } from '../game/game.service';
+import { StatsService } from '../stats/stats.service';
 
 @WebSocketGateway({
   cors: {
@@ -27,6 +28,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private matchmakingService: MatchmakingService,
     private roomService: RoomService,
     private gameService: GameService,
+    private statsService: StatsService,
   ) {}
 
   async handleConnection(client: Socket) {
@@ -41,6 +43,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (room) {
       const result = this.gameService.handleDisconnect(room, client.id);
       if (result) {
+        // 更新統計數據
+        this.updatePlayerStats(room, result.winner);
+
         this.server.to(room.id).emit('game.result', result);
         this.roomService.deleteRoom(room.id);
       }
@@ -113,6 +118,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // 檢查遊戲是否結束
       const result = this.gameService.checkGameEnd(updatedRoom, move);
       if (result) {
+        // 更新統計數據
+        this.updatePlayerStats(updatedRoom, result.winner);
+
         this.server.to(room.id).emit('game.result', result);
         updatedRoom.status = 'ended';
         updatedRoom.winner = result.winner;
@@ -134,6 +142,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
 
       const result = this.gameService.handleSurrender(room, client.id);
+
+      // 更新統計數據
+      this.updatePlayerStats(room, result.winner);
+
       this.server.to(room.id).emit('game.result', result);
 
       room.status = 'ended';
@@ -203,6 +215,119 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const room = this.roomService.getRoomBySocketId(client.id);
     if (room) {
       client.leave(room.id);
+    }
+  }
+
+  @SubscribeMessage('game.undo.request')
+  handleUndoRequest(@ConnectedSocket() client: Socket) {
+    try {
+      const room = this.roomService.getRoomBySocketId(client.id);
+      if (!room) {
+        throw new Error('Room not found');
+      }
+
+      if (room.status !== 'playing') {
+        throw new Error('Game is not in progress');
+      }
+
+      if (!this.gameService.canUndo(room)) {
+        throw new Error('No moves to undo');
+      }
+
+      // 如果已經有悔棋請求，忽略
+      if (room.undoRequest) {
+        return;
+      }
+
+      const player = room.players.find(p => p.socketId === client.id);
+      if (!player) {
+        throw new Error('Player not found');
+      }
+
+      // 設置悔棋請求
+      this.gameService.setUndoRequest(room, player.id);
+      this.roomService.updateRoom(room);
+
+      // 通知對手有悔棋請求
+      const opponent = room.players.find(p => p.socketId !== client.id);
+      if (opponent) {
+        this.server.to(opponent.socketId).emit('game.undo.requested', {
+          requesterId: player.id,
+          requesterName: player.name,
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      client.emit('error', { message });
+    }
+  }
+
+  @SubscribeMessage('game.undo.respond')
+  handleUndoRespond(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { accept: boolean },
+  ) {
+    try {
+      const room = this.roomService.getRoomBySocketId(client.id);
+      if (!room) {
+        throw new Error('Room not found');
+      }
+
+      if (!room.undoRequest) {
+        throw new Error('No undo request pending');
+      }
+
+      // 確保回應者不是請求者
+      const player = room.players.find(p => p.socketId === client.id);
+      if (!player || player.id === room.undoRequest) {
+        throw new Error('Cannot respond to your own request');
+      }
+
+      if (data.accept) {
+        // 接受悔棋，執行撤銷
+        this.gameService.undoLastMove(room);
+        this.roomService.updateRoom(room);
+
+        // 通知雙方悔棋完成
+        this.server.to(room.id).emit('game.undo.done', {
+          board: room.board,
+          currentTurn: room.currentTurn,
+        });
+      } else {
+        // 拒絕悔棋
+        this.gameService.clearUndoRequest(room);
+        this.roomService.updateRoom(room);
+
+        // 通知請求者悔棋被拒絕
+        const requester = room.players.find(p => p.id === room.undoRequest);
+        if (requester) {
+          this.server.to(requester.socketId).emit('game.undo.rejected');
+        }
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      client.emit('error', { message });
+    }
+  }
+
+  /**
+   * 更新玩家統計數據
+   */
+  private updatePlayerStats(room: any, winnerId?: string): void {
+    if (!winnerId || !room.players || room.players.length < 2) {
+      return;
+    }
+
+    const winner = room.players.find((p: any) => p.id === winnerId);
+    const loser = room.players.find((p: any) => p.id !== winnerId);
+
+    if (winner && loser) {
+      this.statsService.updateGameResult(winner.name, loser.name);
+
+      // 更新房間中的玩家統計數據
+      room.players = room.players.map((p: any) =>
+        this.statsService.initializePlayerStats(p)
+      );
     }
   }
 }

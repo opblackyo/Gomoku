@@ -3,6 +3,7 @@ import { GameGateway } from './modules/gateway/game.gateway';
 import { MatchmakingService } from './modules/matchmaking/matchmaking.service';
 import { RoomService } from './modules/room/room.service';
 import { GameService } from './modules/game/game.service';
+import { StatsService } from './modules/stats/stats.service';
 
 @Module({
   imports: [],
@@ -11,6 +12,7 @@ import { GameService } from './modules/game/game.service';
     MatchmakingService,
     RoomService,
     GameService,
+    StatsService,
   ],
 })
 export class AppModule {}

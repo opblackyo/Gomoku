@@ -12,6 +12,8 @@ export interface ClientToServerEvents {
   'game.move': (data: Move) => void;
   'game.surrender': () => void;
   'game.restart': () => void;
+  'game.undo.request': () => void; // 請求悔棋
+  'game.undo.respond': (data: { accept: boolean }) => void; // 回應悔棋請求
   'room.join': (data: { roomId: string }) => void;
   'room.leave': () => void;
 }
@@ -23,6 +25,9 @@ export interface ServerToClientEvents {
   'room.update': (data: Room) => void;
   'game.update': (data: { move: Move; board: Room['board']; currentTurn: Room['currentTurn'] }) => void;
   'game.result': (data: GameResult) => void;
+  'game.undo.requested': (data: { requesterId: string; requesterName: string }) => void; // 收到悔棋請求
+  'game.undo.done': (data: { board: Room['board']; currentTurn: Room['currentTurn'] }) => void; // 悔棋完成
+  'game.undo.rejected': () => void; // 悔棋被拒絕
   'error': (data: { message: string }) => void;
 }
 

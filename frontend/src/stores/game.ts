@@ -12,6 +12,9 @@ export const useGameStore = defineStore('game', () => {
   const pendingMove = ref<{ x: number; y: number } | null>(null);
   const lastMove = ref<{ x: number; y: number } | null>(null);
   const gameResult = ref<GameResult | null>(null);
+  const undoRequest = ref<{ requesterId: string; requesterName: string } | null>(null);
+  const waitingForUndoResponse = ref(false);
+  const moveCount = ref(0); // 追蹤棋步數量
 
   // Actions
   const joinMatchmaking = async (playerName: string) => {
@@ -62,6 +65,21 @@ export const useGameStore = defineStore('game', () => {
     pendingMove.value = null;
     lastMove.value = null;
     gameResult.value = null;
+    undoRequest.value = null;
+    waitingForUndoResponse.value = false;
+  };
+
+  // 悔棋功能
+  const requestUndo = () => {
+    if (!room.value || room.value.status !== 'playing') return;
+    if (waitingForUndoResponse.value) return;
+    waitingForUndoResponse.value = true;
+    socket.emit('game.undo.request');
+  };
+
+  const respondToUndo = (accept: boolean) => {
+    socket.emit('game.undo.respond', { accept });
+    undoRequest.value = null;
   };
 
   // WebSocket event listeners
@@ -86,9 +104,10 @@ export const useGameStore = defineStore('game', () => {
     // 清除遊戲狀態
     pendingMove.value = null;
     lastMove.value = null;
-    // 如果遊戲重新開始，清除遊戲結果
+    // 如果遊戲重新開始，清除遊戲結果和棋步數
     if (data.status === 'playing') {
       gameResult.value = null;
+      moveCount.value = 0;
     }
   });
 
@@ -98,6 +117,8 @@ export const useGameStore = defineStore('game', () => {
       room.value.currentTurn = data.currentTurn;
       // 記錄最後一手
       lastMove.value = { x: data.move.x, y: data.move.y };
+      // 增加棋步數
+      moveCount.value++;
       // 清除預覽
       pendingMove.value = null;
     }
@@ -112,8 +133,35 @@ export const useGameStore = defineStore('game', () => {
     // 設置遊戲結果以顯示彈跳視窗
     gameResult.value = data;
 
-    // 清除預覽
+    // 清除預覽和悔棋狀態
     pendingMove.value = null;
+    undoRequest.value = null;
+    waitingForUndoResponse.value = false;
+  });
+
+  // 悔棋相關事件
+  socket.on('game.undo.requested', (data) => {
+    undoRequest.value = data;
+  });
+
+  socket.on('game.undo.done', (data) => {
+    if (room.value) {
+      room.value.board = data.board;
+      room.value.currentTurn = data.currentTurn;
+      // 減少棋步數
+      if (moveCount.value > 0) {
+        moveCount.value--;
+      }
+      // 清除最後一手標記（悔棋後不顯示）
+      lastMove.value = null;
+    }
+    undoRequest.value = null;
+    waitingForUndoResponse.value = false;
+    pendingMove.value = null;
+  });
+
+  socket.on('game.undo.rejected', () => {
+    waitingForUndoResponse.value = false;
   });
 
   return {
@@ -124,6 +172,9 @@ export const useGameStore = defineStore('game', () => {
     pendingMove,
     lastMove,
     gameResult,
+    undoRequest,
+    waitingForUndoResponse,
+    moveCount,
     joinMatchmaking,
     cancelMatchmaking,
     setPendingMove,
@@ -132,6 +183,8 @@ export const useGameStore = defineStore('game', () => {
     surrender,
     restartGame,
     leaveRoom,
+    requestUndo,
+    respondToUndo,
   };
 });
 

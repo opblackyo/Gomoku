@@ -31,10 +31,65 @@ export class GameService {
     const pieceValue: BoardCell = playerColor === 'black' ? 1 : 2;
     room.board[y][x] = pieceValue;
 
+    // 記錄棋步歷史
+    if (!room.moveHistory) {
+      room.moveHistory = [];
+    }
+    room.moveHistory.push({ x, y, playerId });
+
+    // 清除悔棋請求
+    room.undoRequest = undefined;
+
     // 切換回合
     room.currentTurn = playerColor === 'black' ? 'white' : 'black';
 
     return room;
+  }
+
+  /**
+   * 執行悔棋 - 撤銷最後一步棋
+   */
+  undoLastMove(room: Room): Room {
+    if (!room.moveHistory || room.moveHistory.length === 0) {
+      throw new Error('No moves to undo');
+    }
+
+    // 取出最後一步棋
+    const lastMove = room.moveHistory.pop();
+    if (lastMove) {
+      // 清除該位置的棋子
+      room.board[lastMove.y][lastMove.x] = 0;
+
+      // 切換回合（回到上一步的玩家）
+      const lastPlayerIndex = room.players.findIndex(p => p.id === lastMove.playerId);
+      room.currentTurn = lastPlayerIndex === 0 ? 'black' : 'white';
+    }
+
+    // 清除悔棋請求
+    room.undoRequest = undefined;
+
+    return room;
+  }
+
+  /**
+   * 設置悔棋請求
+   */
+  setUndoRequest(room: Room, playerId: string): void {
+    room.undoRequest = playerId;
+  }
+
+  /**
+   * 清除悔棋請求
+   */
+  clearUndoRequest(room: Room): void {
+    room.undoRequest = undefined;
+  }
+
+  /**
+   * 檢查是否可以悔棋（需要至少有一步棋）
+   */
+  canUndo(room: Room): boolean {
+    return room.moveHistory !== undefined && room.moveHistory.length > 0;
   }
 
   checkGameEnd(room: Room, lastMove: Move): GameResult | null {
