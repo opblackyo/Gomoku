@@ -206,7 +206,7 @@ git push -u origin main
 | **Root Directory** | `backend` |
 | **Runtime** | `Node` |
 | **Build Command** | `npm install -g pnpm && pnpm install --no-frozen-lockfile && pnpm build` |
-| **Start Command** | `node dist/src/main` |
+| **Start Command** | `node dist/main` |
 | **Instance Type** | `Free` (或 `Starter $7/mo`) |
 
 #### 3.4 設定環境變數

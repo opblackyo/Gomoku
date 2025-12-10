@@ -46,7 +46,7 @@ git push
 #    - Name: gomoku-backend
 #    - Root Directory: backend
 #    - Build Command: npm install -g pnpm && pnpm install --no-frozen-lockfile && pnpm build
-#    - Start Command: node dist/src/main
+#    - Start Command: node dist/main
 # 4. 環境變數：
 #    NODE_ENV=production
 #    PORT=3001
