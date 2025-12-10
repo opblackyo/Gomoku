@@ -4,14 +4,24 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Enable CORS - 允许局域网访问
+  // CORS 設定 - 支援生產環境和開發環境
+  const allowedOrigins = process.env.CORS_ORIGIN 
+    ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+    : ['http://localhost:5173', 'http://localhost:4173'];
+
   app.enableCors({
-    origin: true, // 允许所有来源（开发环境）
+    origin: process.env.NODE_ENV === 'production' 
+      ? allowedOrigins 
+      : true, // 開發環境允許所有來源
     credentials: true,
   });
 
-  await app.listen(3001, '0.0.0.0'); // 监听所有网络接口
-  console.log('Backend server is running on http://0.0.0.0:3001');
+  const port = process.env.PORT || 3001;
+  await app.listen(port, '0.0.0.0'); // 監聽所有網路介面
+  
+  console.log(`🚀 Backend server is running on port ${port}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔐 Allowed origins: ${allowedOrigins.join(', ')}`);
 }
 
 bootstrap();

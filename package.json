@@ -11,7 +11,10 @@
     "build:backend": "pnpm --filter backend build",
     "build": "pnpm build:backend && pnpm build:frontend",
     "lint": "pnpm --filter frontend lint && pnpm --filter backend lint",
-    "type-check": "pnpm --filter frontend type-check && pnpm --filter backend build"
+    "type-check": "pnpm --filter frontend type-check && pnpm --filter backend build",
+    "test:websocket": "node test-websocket.js",
+    "test:full-flow": "node test-full-flow.js",
+    "db:migrate": "node backend/database/migrate.js"
   },
   "keywords": [
     "gomoku",

@@ -16,7 +16,9 @@ import { StatsService } from '../stats/stats.service';
 
 @WebSocketGateway({
   cors: {
-    origin: true, // 允许所有来源（开发环境）
+    origin: process.env.CORS_ORIGIN 
+      ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+      : true, // 開發環境允許所有來源
     credentials: true,
   },
 })
