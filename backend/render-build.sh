@@ -6,7 +6,7 @@ echo "🔧 Installing pnpm..."
 npm install -g pnpm
 
 echo "📦 Installing dependencies..."
-pnpm install --frozen-lockfile
+pnpm install --no-frozen-lockfile
 
 echo "🏗️ Building project..."
 pnpm build
