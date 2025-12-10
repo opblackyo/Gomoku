@@ -27,38 +27,34 @@ socket.on('connect', () => {
 });
 
 // 錯誤處理
-socket.on('connect_error', (error) => {
+socket.on('connect_error', (error: Error) => {
   console.error('❌ WebSocket connection error:', error.message);
   console.log('🔄 Will retry connection...');
 });
 
-socket.on('connect_timeout', () => {
-  console.error('⏰ WebSocket connection timeout');
+socket.io.on('reconnect', (attemptNumber: number) => {
+  console.log('🔄 WebSocket reconnected after', attemptNumber, 'attempts');
 });
 
-socket.on('disconnect', (reason) => {
+socket.io.on('reconnect_attempt', (attemptNumber: number) => {
+  console.log('🔄 WebSocket reconnection attempt', attemptNumber);
+});
+
+socket.io.on('reconnect_error', (error: Error) => {
+  console.error('❌ WebSocket reconnection error:', error.message);
+});
+
+socket.io.on('reconnect_failed', () => {
+  console.error('❌ WebSocket reconnection failed');
+  alert('無法連接到伺服器，請檢查網路連線或重新整理頁面');
+});
+
+socket.on('disconnect', (reason: string) => {
   console.log('🔌 WebSocket disconnected:', reason);
   if (reason === 'io server disconnect') {
     // 伺服器主動斷線，需要手動重連
     socket.connect();
   }
-});
-
-socket.on('reconnect', (attemptNumber) => {
-  console.log('🔄 WebSocket reconnected after', attemptNumber, 'attempts');
-});
-
-socket.on('reconnect_attempt', (attemptNumber) => {
-  console.log('🔄 WebSocket reconnection attempt', attemptNumber);
-});
-
-socket.on('reconnect_error', (error) => {
-  console.error('❌ WebSocket reconnection error:', error.message);
-});
-
-socket.on('reconnect_failed', () => {
-  console.error('❌ WebSocket reconnection failed');
-  alert('無法連接到伺服器，請檢查網路連線或重新整理頁面');
 });
 
 socket.on('error', (data) => {
